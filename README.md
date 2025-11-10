@@ -1,3 +1,8 @@
+<img width="691" height="748" alt="image" src="https://github.com/user-attachments/assets/efa65860-41a8-488b-8a99-f43076220d61" />
+<br/>
+<img width="694" height="308" alt="image" src="https://github.com/user-attachments/assets/f1bb9147-4704-4041-859e-343f3a62e179" />
+
+
 # Solo Gym Leveling — Firebase Setup Guide
 
 This project is a futuristic Solo Leveling–inspired training HUD built with HTML/CSS/JS and optional Firebase Cloud Sync. Follow these steps to wire it up.
