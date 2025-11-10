@@ -1,7 +1,19 @@
-<img width="691" height="748" alt="image" src="https://github.com/user-attachments/assets/efa65860-41a8-488b-8a99-f43076220d61" />
-<br/>
-<img width="694" height="308" alt="image" src="https://github.com/user-attachments/assets/f1bb9147-4704-4041-859e-343f3a62e179" />
+<p align="center">
+  <a href="https://ritiksw.github.io/Solo-Leveling/">
+    <img width="691" height="748" alt="Solo Gym Leveling UI" src="https://github.com/user-attachments/assets/efa65860-41a8-488b-8a99-f43076220d61" />
+  </a>
+</p>
+<p align="center">
+  <a href="https://ritiksw.github.io/Solo-Leveling/">
+    <img width="694" height="308" alt="Solo Gym Leveling Quest Panel" src="https://github.com/user-attachments/assets/f1bb9147-4704-4041-859e-343f3a62e179" />
+  </a>
+</p>
 
+<p align="center">
+  <a href="https://ritiksw.github.io/Solo-Leveling/">
+    <img src="https://img.shields.io/badge/Solo%20Gym%20Leveling-Live%20Demo-1f6feb?style=for-the-badge" alt="Live Demo">
+  </a>
+</p>
 
 # Solo Gym Leveling — Firebase Setup Guide
 
