@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solo Gym Leveling</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="background-grid"></div>
+  <div class="background-glow"></div>
+
+  <main class="shell">
+    <header class="hud">
+      <h1>Solo Gym Leveling</h1>
+      <p class="subtitle">Ascend like a Shadow Monarch of Muscles.</p>
+    </header>
+
+    <section class="hero-card glass">
+      <div class="hero-header">
+        <div class="avatar">
+          <div class="avatar-glow"></div>
+          <div class="avatar-shape">
+            <span class="avatar-level" id="level">Lv. 1</span>
+          </div>
+        </div>
+        <div class="core-stats">
+          <div class="stat-line">
+            <span>XP</span>
+            <div class="progress">
+              <div class="progress-fill" id="xp-fill"></div>
+            </div>
+            <span id="xp-text">0 / 100</span>
+          </div>
+          <div class="stat-line energy">
+            <span>Energy</span>
+            <div class="progress">
+              <div class="progress-fill" id="energy-fill"></div>
+            </div>
+            <span id="energy-text">100 / 100</span>
+          </div>
+        </div>
+      </div>
+      <div class="stat-grid" id="stat-grid">
+        <!-- Populated via JS -->
+      </div>
+      <div class="skill-grid" id="skill-grid">
+        <!-- Populated via JS -->
+      </div>
+    </section>
+
+    <section class="targets glass">
+      <div class="targets-header">
+        <h2>Mission Targets</h2>
+        <button class="targets-recalibrate" id="recalibrate-targets">Recalibrate</button>
+      </div>
+      <div class="targets-grid" id="targets-grid">
+        <!-- Targets populated via JS -->
+      </div>
+    </section>
+
+    <section class="actions glass">
+      <h2>Training Protocols</h2>
+      <div class="action-buttons">
+        <button data-action="strength" class="action primary">Titan Lifts</button>
+        <button data-action="agility" class="action">Shadow Sprints</button>
+        <button data-action="endurance" class="action">Void Cycling</button>
+        <button data-action="focus" class="action">Mind Palace</button>
+        <button data-action="raid" class="action ultimate">Enter Gate Raid</button>
+      </div>
+    </section>
+
+    <section class="log glass">
+      <div class="log-header">
+        <h2>System Feed</h2>
+        <div class="log-filters">
+          <button data-filter="all" class="filter active">All</button>
+          <button data-filter="status" class="filter">Status</button>
+          <button data-filter="alert" class="filter">Alerts</button>
+          <button data-filter="loot" class="filter">Loot</button>
+        </div>
+      </div>
+      <div class="log-feed" id="log-feed">
+        <!-- System messages -->
+      </div>
+    </section>
+  </main>
+
+  <template id="stat-template">
+    <div class="stat-card">
+      <div class="stat-title"></div>
+      <div class="stat-value"></div>
+      <div class="stat-bar">
+        <div class="stat-bar-fill"></div>
+      </div>
+    </div>
+  </template>
+
+  <template id="skill-template">
+    <div class="skill-card">
+      <div class="skill-name"></div>
+      <div class="skill-desc"></div>
+      <div class="skill-tier"></div>
+    </div>
+  </template>
+
+  <template id="target-template">
+    <div class="target-card">
+      <div class="target-header">
+        <span class="target-name"></span>
+        <span class="target-type"></span>
+      </div>
+      <div class="target-progress">
+        <div class="target-progress-bar"></div>
+      </div>
+      <div class="target-meta"></div>
+    </div>
+  </template>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
+
