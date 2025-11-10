@@ -113,8 +113,12 @@ const statGrid = document.getElementById('stat-grid');
 const statTemplate = document.getElementById('stat-template');
 const skillGrid = document.getElementById('skill-grid');
 const skillTemplate = document.getElementById('skill-template');
-const targetGrid = document.getElementById('targets-grid');
-const targetTemplate = document.getElementById('target-template');
+const questList = document.getElementById('quest-list');
+const questTemplate = document.getElementById('quest-template');
+const questTitle = document.getElementById('quest-title');
+const questSubtitle = document.getElementById('quest-subtitle');
+const questTimer = document.getElementById('quest-timer');
+const notificationStack = document.getElementById('notification-stack');
 const logFeed = document.getElementById('log-feed');
 const recalibrateButton = document.getElementById('recalibrate-targets');
 
@@ -273,6 +277,7 @@ function levelUp() {
   const statGain = 4 + Math.floor(state.level / 3);
   augmentAllStats(statGain);
   addLog('alert', `LEVEL UP! Ascended to Lv.${state.level}. Core stats +${statGain} each.`);
+  pushNotification('ALARM', 'You leveled up!');
 
   state.xpToLevel = Math.round(state.xpToLevel * 1.32 + state.level * 18);
   unlockSkills();
@@ -368,14 +373,20 @@ function maybeTriggerEvent(actionKey) {
     const bonusXp = randomBetween(12, 28);
     addXp(bonusXp);
     addLog('loot', `Shadow Monarch grants ${bonusXp} bonus XP.`);
+    pushNotification('NOTIFICATION', 'You have received a reward.\n[Penalty Quest: Survival]\nCheck your reward?', [
+      { label: 'Yes' },
+      { label: 'No' }
+    ]);
   } else if (luckyRoll < 0.22) {
     const shield = Math.round(state.energyMax * 0.15);
     state.energy = Math.min(state.energy + shield, state.energyMax);
     addLog('status', `Void shield pulses. Energy +${shield}.`);
+    pushNotification('SYSTEM NOTICE', 'Void shield reinforcement detected.');
   } else if (luckyRoll > 0.92) {
     const drain = randomBetween(10, 18);
     state.energy = Math.max(0, state.energy - drain);
     addLog('alert', `Overexertion detected during ${actionBook[actionKey].name}. Energy -${drain}.`);
+    pushNotification('WARNING', 'Overexertion detected during training.');
   }
 }
 
@@ -431,20 +442,20 @@ function renderSkills() {
 }
 
 function renderTargets() {
-  if (!targetGrid || !targetTemplate) return;
+  if (!questList || !questTemplate) return;
   const targets = state.targets ?? generateDefaultTargets();
-  targetGrid.innerHTML = '';
+  questList.innerHTML = '';
 
   const entries = [];
 
   if (Number.isFinite(targets.level)) {
     entries.push({
       key: 'level',
-      label: 'Ascension',
-      type: 'Level',
+      label: `Ascend to Lv. ${targets.level}`,
       current: state.level,
       goal: targets.level,
-      format: value => `Lv. ${value}`
+      displayCurrent: `Lv. ${state.level}`,
+      displayGoal: `Lv. ${targets.level}`
     });
   }
 
@@ -453,49 +464,65 @@ function renderTargets() {
     if (!stat || !Number.isFinite(goal)) return;
     entries.push({
       key,
-      label: stat.label,
-      type: 'Stat',
+      label: `${stat.label} Training`,
       current: stat.value,
       goal,
-      format: value => `${value} pts`
+      displayCurrent: `${stat.value} pts`,
+      displayGoal: `${goal} pts`
     });
   });
 
   if (Number.isFinite(targets.raidPower)) {
     entries.push({
       key: 'raidPower',
-      label: 'Gate Power',
-      type: 'Raid',
+      label: 'Gate Power Threshold',
       current: totalPowerScore(),
       goal: targets.raidPower,
-      format: value => `${value} Power`
+      displayCurrent: `${totalPowerScore()} Power`,
+      displayGoal: `${targets.raidPower} Power`
     });
   }
 
   entries.forEach(entry => {
     const goal = Math.max(entry.goal, 1);
     const percent = Math.min(100, Math.round((entry.current / goal) * 100));
-    const clone = targetTemplate.content.cloneNode(true);
-    const card = clone.querySelector('.target-card');
-    const name = clone.querySelector('.target-name');
-    const type = clone.querySelector('.target-type');
-    const progress = clone.querySelector('.target-progress-bar');
-    const meta = clone.querySelector('.target-meta');
+    const clone = questTemplate.content.cloneNode(true);
+    const card = clone.querySelector('.quest-item');
+    const status = clone.querySelector('.quest-item-status');
+    const label = clone.querySelector('.quest-item-label');
+    const progress = clone.querySelector('.quest-item-progress');
+    const fill = clone.querySelector('.quest-item-fill');
 
-    name.textContent = entry.label;
-    type.textContent = entry.type;
-    progress.style.width = `${Math.max(0, percent)}%`;
-    meta.textContent = `${entry.format(entry.current)} / ${entry.format(entry.goal)}`;
-    if (entry.current >= entry.goal) {
+    const complete = entry.current >= entry.goal;
+    status.textContent = complete ? '(COMPLETE)' : '(INCOMPLETE)';
+    label.textContent = entry.label;
+    const currentText = entry.displayCurrent ?? entry.current;
+    const goalText = entry.displayGoal ?? entry.goal;
+    progress.textContent = `[${currentText} / ${goalText}]`;
+    fill.style.width = `${Math.max(4, percent)}%`;
+
+    if (complete) {
       card.classList.add('completed');
     }
 
-    targetGrid.appendChild(clone);
+    questList.appendChild(clone);
   });
+
+  if (questTitle) {
+    questTitle.textContent = 'Daily Quest — Getting Ready To Become Powerful';
+  }
+
+  if (questSubtitle) {
+    questSubtitle.textContent = 'Complete the assigned regimen before the System retaliates.';
+  }
+
+  if (questTimer) {
+    questTimer.textContent = 'System surveillance active.';
+  }
 }
 
 function requestTargetRender(force = false) {
-  if (!targetGrid || !targetTemplate) return;
+  if (!questList || !questTemplate) return;
   if (force) {
     targetRenderQueued = false;
     renderTargets();
@@ -514,6 +541,7 @@ function recalibrateTargets() {
   addLog('status', 'Mission targets recalibrated by System Handler.');
   requestTargetRender(true);
   markStateDirty();
+  pushNotification('NOTICE', 'Quest directives recalibrated by the System Handler.');
 }
 
 function checkTargetProgress() {
@@ -524,6 +552,7 @@ function checkTargetProgress() {
     addLog('loot', `Ascension target achieved: Lv.${state.level}.`);
     state.targets.level = state.level + 1;
     recalculated = true;
+    pushNotification('QUEST UPDATE', `Ascension objective cleared at Lv.${state.level}.`);
   }
 
   if (Number.isFinite(state.targets.raidPower)) {
@@ -532,6 +561,7 @@ function checkTargetProgress() {
       addLog('loot', `Raid readiness threshold hit: ${power} power.`);
       state.targets.raidPower = power + 160;
       recalculated = true;
+      pushNotification('QUEST UPDATE', 'Gate power threshold secured.');
     }
   }
 
@@ -542,6 +572,7 @@ function checkTargetProgress() {
       addLog('loot', `${stat.label} target cleared at ${stat.value}.`);
       state.targets.stats[key] = goal + randomBetween(18, 32);
       recalculated = true;
+      pushNotification('QUEST UPDATE', `${stat.label} regimen complete.`);
     }
   });
 
@@ -552,7 +583,7 @@ function checkTargetProgress() {
 }
 
 function updateCoreHud() {
-  levelText.textContent = `Lv. ${state.level}`;
+  levelText.textContent = `LV. ${state.level}`;
   const xpPercent = Math.min(100, Math.round((state.xp / state.xpToLevel) * 100));
   xpFill.style.width = `${xpPercent}%`;
   xpText.textContent = `${state.xp} / ${state.xpToLevel}`;
@@ -747,6 +778,57 @@ function getOrCreatePlayerId() {
   } catch (error) {
     console.warn('localStorage unavailable, using session-bound id.', error);
     return `session-${Date.now()}`;
+  }
+}
+
+function pushNotification(title, message, actions = []) {
+  if (!notificationStack) return;
+  const card = document.createElement('div');
+  card.className = 'notification-card';
+
+  const titleNode = document.createElement('div');
+  titleNode.className = 'notification-title';
+  titleNode.textContent = title;
+
+  const messageNode = document.createElement('div');
+  messageNode.className = 'notification-message';
+  messageNode.textContent = message;
+
+  card.appendChild(titleNode);
+  card.appendChild(messageNode);
+
+  if (Array.isArray(actions) && actions.length > 0) {
+    const actionsWrap = document.createElement('div');
+    actionsWrap.className = 'notification-actions';
+    actions.forEach(option => {
+      const config = typeof option === 'string' ? { label: option } : option;
+      const button = document.createElement('button');
+      button.textContent = config.label ?? 'OK';
+      button.addEventListener('click', () => {
+        if (typeof config.onClick === 'function') {
+          config.onClick();
+        }
+        dismiss();
+      });
+      actionsWrap.appendChild(button);
+    });
+    card.appendChild(actionsWrap);
+  }
+
+  notificationStack.appendChild(card);
+  requestAnimationFrame(() => card.classList.add('visible'));
+
+  function dismiss() {
+    card.classList.remove('visible');
+    setTimeout(() => {
+      if (card.parentElement) {
+        card.parentElement.removeChild(card);
+      }
+    }, 260);
+  }
+
+  if (!actions || actions.length === 0) {
+    setTimeout(dismiss, 4200);
   }
 }
 
