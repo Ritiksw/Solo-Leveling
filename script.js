@@ -1,5 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { firebaseConfig, firebaseOptions } from './firebase-config.js';
 
 const STORAGE_KEY = 'soloGymPlayerId';
@@ -121,6 +122,8 @@ const questTimer = document.getElementById('quest-timer');
 const notificationStack = document.getElementById('notification-stack');
 const logFeed = document.getElementById('log-feed');
 const recalibrateButton = document.getElementById('recalibrate-targets');
+const authButton = document.getElementById('auth-button');
+const authUserLabel = document.getElementById('auth-user');
 
 const statElements = {};
 
@@ -132,6 +135,11 @@ let stateDirty = false;
 let legionTicker = 0;
 let suppressPersistence = false;
 let targetRenderQueued = false;
+let auth = null;
+let authProvider = null;
+let activeUser = null;
+let activePlayerId = null;
+let usingAnonymousProfile = false;
 
 async function init() {
   state.targets = state.targets ?? generateDefaultTargets();
@@ -142,6 +150,8 @@ async function init() {
   bindActions();
   bindFilters();
   bindTargetControls();
+  bindAuthControls();
+  updateAuthUi(null);
   unlockSkills();
   addLog('status', 'Shadow training shell initialized.');
   addLog('status', 'Manual Reps protocol loaded. Awaiting commands.');
@@ -169,6 +179,55 @@ function bindTargetControls() {
   recalibrateButton.addEventListener('click', () => {
     recalibrateTargets();
   });
+}
+
+function bindAuthControls() {
+  if (!authButton) return;
+  authButton.addEventListener('click', async () => {
+    if (!firebaseOptions.enabled) {
+      addLog('alert', 'Firebase not configured. Update firebase-config.js to enable Google login.');
+      return;
+    }
+    if (!auth || !authProvider) {
+      addLog('alert', 'Authentication system not ready. Try again in a moment.');
+      return;
+    }
+    try {
+      if (activeUser) {
+        await signOut(auth);
+        addLog('status', 'Signed out. Reverting to offline profile.');
+      } else {
+        await signInWithPopup(auth, authProvider);
+      }
+    } catch (error) {
+      console.error('Auth action failed', error);
+      addLog('alert', 'Authentication failed. Check console for details.');
+    }
+  });
+}
+
+function updateAuthUi(user) {
+  if (!authButton || !authUserLabel) return;
+  if (!firebaseOptions.enabled) {
+    authUserLabel.textContent = 'Offline Mode';
+    authButton.textContent = 'Offline';
+    authButton.disabled = true;
+    authButton.classList.remove('connected');
+    return;
+  }
+
+  if (user) {
+    const label = user.displayName || user.email || 'Connected User';
+    authUserLabel.textContent = label.toUpperCase();
+    authButton.textContent = 'Sign Out';
+    authButton.disabled = false;
+    authButton.classList.add('connected');
+  } else {
+    authUserLabel.textContent = usingAnonymousProfile ? 'Anonymous Cloud Profile' : 'Offline Profile';
+    authButton.textContent = 'Sign In';
+    authButton.disabled = false;
+    authButton.classList.remove('connected');
+  }
 }
 
 function bindFilters() {
@@ -680,6 +739,9 @@ function serializeState() {
     skills: Object.keys(state.skills),
     targets: state.targets,
     bonusStacks: state.bonusStacks,
+    profileId: activePlayerId,
+    profileType: usingAnonymousProfile ? 'anonymous' : 'authenticated',
+    profileUser: activeUser ? (activeUser.email || activeUser.uid) : null,
     updatedAt: Date.now()
   };
 }
@@ -687,29 +749,57 @@ function serializeState() {
 async function initFirebase() {
   if (!firebaseOptions.enabled) {
     addLog('status', 'Cloud sync offline. Update firebase-config.js to enable Firebase.');
+    usingAnonymousProfile = true;
+    updateAuthUi(null);
     return;
   }
 
   try {
     firebaseApp = initializeApp(firebaseConfig);
     db = getFirestore(firebaseApp);
-    const playerId = getOrCreatePlayerId();
-    playerDocRef = doc(db, 'soloGymPlayers', playerId);
+    auth = getAuth(firebaseApp);
+    authProvider = new GoogleAuthProvider();
+    authProvider.setCustomParameters({ prompt: 'select_account' });
 
-    suppressPersistence = true;
-    const snapshot = await getDoc(playerDocRef);
-    if (snapshot.exists()) {
-      applyRemoteState(snapshot.data());
-      addLog('status', 'Firebase link established. Progress synchronized.');
-    } else {
-      await setDoc(playerDocRef, serializeState());
-      addLog('status', 'Firebase profile created. Progress will sync automatically.');
-    }
+    onAuthStateChanged(auth, user => {
+      handleAuthStateChange(user);
+    });
   } catch (error) {
     console.error('Firebase initialization failed', error);
     addLog('alert', 'Firebase link failed. Verify configuration and console output.');
+    updateAuthUi(null);
   } finally {
     suppressPersistence = false;
+  }
+}
+
+async function handleAuthStateChange(user) {
+  activeUser = user;
+  usingAnonymousProfile = !user;
+  updateAuthUi(user);
+
+  if (!db || !firebaseOptions.enabled) return;
+
+  const profileId = user ? `uid-${user.uid}` : getOrCreatePlayerId();
+  activePlayerId = profileId;
+  playerDocRef = doc(db, 'soloGymPlayers', activePlayerId);
+
+  suppressPersistence = true;
+  try {
+    const snapshot = await getDoc(playerDocRef);
+    if (snapshot.exists()) {
+      applyRemoteState(snapshot.data());
+      addLog('status', user ? 'Firebase profile synchronized.' : 'Anonymous profile synchronized.');
+    } else {
+      await setDoc(playerDocRef, serializeState());
+      addLog('status', user ? 'New authenticated profile created.' : 'Anonymous profile created.');
+    }
+  } catch (error) {
+    console.error('Failed to synchronize profile', error);
+    addLog('alert', 'Profile synchronization failed. Check console for details.');
+  } finally {
+    suppressPersistence = false;
+    stateDirty = false;
   }
 }
 
@@ -772,12 +862,16 @@ function getOrCreatePlayerId() {
       } else {
         playerId = `player-${Math.random().toString(36).slice(2, 10)}`;
       }
+      playerId = `anon-${playerId}`.replace(/[^a-zA-Z0-9-_]/g, '');
+      localStorage.setItem(STORAGE_KEY, playerId);
+    } else if (!playerId.startsWith('anon-')) {
+      playerId = `anon-${playerId}`;
       localStorage.setItem(STORAGE_KEY, playerId);
     }
     return playerId;
   } catch (error) {
     console.warn('localStorage unavailable, using session-bound id.', error);
-    return `session-${Date.now()}`;
+    return `anon-session-${Date.now()}`;
   }
 }
 

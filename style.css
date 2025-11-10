@@ -78,6 +78,20 @@ body {
   gap: 10px;
 }
 
+.hud-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.hud-title {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .hud h1 {
   font-family: 'Orbitron', sans-serif;
   font-size: clamp(2.9rem, 6vw, 4.6rem);
@@ -90,6 +104,49 @@ body {
   color: var(--text-subtle);
   letter-spacing: 0.42em;
   text-transform: uppercase;
+}
+
+.hud-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+}
+
+.auth-user-label {
+  color: var(--text-subtle);
+  white-space: nowrap;
+}
+
+.auth-button {
+  border: 1px solid rgba(92, 224, 255, 0.5);
+  background: linear-gradient(125deg, rgba(92, 224, 255, 0.32), rgba(6, 16, 28, 0.85));
+  color: var(--text-main);
+  border-radius: 999px;
+  padding: 8px 22px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 22px rgba(92, 224, 255, 0.3);
+}
+
+.auth-button.connected {
+  border-color: rgba(127, 107, 255, 0.7);
+  background: linear-gradient(130deg, rgba(127, 107, 255, 0.35), rgba(6, 16, 28, 0.85));
+}
+
+.auth-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .ui-grid {
